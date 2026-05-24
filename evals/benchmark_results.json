@@ -1,0 +1,38 @@
+{
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "partial": 0,
+    "failed": 0,
+    "avg_time_seconds": 29.58
+  },
+  "results": [
+    {
+      "url": "https://www.amazon.in/s?k=laptops&ref=nb_sb_noss",
+      "description": "Amazon India \u2014 Laptop listing page",
+      "status": "PASS",
+      "products_found": 5,
+      "elapsed_seconds": 4.56,
+      "platform": "Amazon",
+      "error": null
+    },
+    {
+      "url": "https://www.flipkart.com/search?q=smartphones&otracker=search",
+      "description": "Flipkart \u2014 Smartphone search results",
+      "status": "PASS",
+      "products_found": 5,
+      "elapsed_seconds": 48.97,
+      "platform": "Flipkart",
+      "error": null
+    },
+    {
+      "url": "https://www.amazon.in/s?k=headphones+under+2000",
+      "description": "Amazon India \u2014 Budget headphones listing",
+      "status": "PASS",
+      "products_found": 5,
+      "elapsed_seconds": 35.22,
+      "platform": "Amazon",
+      "error": null
+    }
+  ]
+}
