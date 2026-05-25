@@ -2,7 +2,7 @@
 title: Coofy AI
 emoji: 🧠
 colorFrom: purple
-colorTo: teal
+colorTo: green
 sdk: streamlit
 sdk_version: 1.57.0
 app_file: app/streamlit_app.py
