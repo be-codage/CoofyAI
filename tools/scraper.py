@@ -62,6 +62,7 @@ class EcommerceScraper:
         options = Options()
 
         # Run in headless mode (no visible browser window)
+        options.binary_location = "/usr/bin/chromium"  # ← ADD THIS
         options.add_argument("--headless=new")
 
         # Anti-detection and stability flags
