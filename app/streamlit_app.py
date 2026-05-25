@@ -10,11 +10,30 @@ Run with: streamlit run app/streamlit_app.py
 # pyrefly: ignore [missing-import]
 import streamlit as st
 # pyrefly: ignore [missing-import]
-import streamlit.components.v1 as components  # ← ADDED
+import streamlit.components.v1 as components
 import requests
 import time
 import json
 from urllib.parse import urlparse
+import subprocess          # ← ADDED
+import threading           # ← ADDED
+import time as _time       # ← ADDED
+
+# ---------------------------------------------------------------
+# Auto-start FastAPI backend (for HuggingFace Spaces)
+# ---------------------------------------------------------------
+def _start_backend():
+    subprocess.Popen(
+        ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    _time.sleep(3)
+
+if "backend_started" not in st.session_state:
+    threading.Thread(target=_start_backend, daemon=True).start()
+    st.session_state["backend_started"] = True
+    _time.sleep(3)
 
 # ---------------------------------------------------------------
 # Page Configuration
@@ -233,10 +252,10 @@ st.markdown("""
 
 def get_badge_class(rating: str) -> str:
     rating_lower = rating.lower().strip() if rating else ""
-    if "hot" in rating_lower:       return "badge-hot"
-    elif "good" in rating_lower:    return "badge-good"
-    elif "fair" in rating_lower:    return "badge-fair"
-    elif "risky" in rating_lower:   return "badge-risky"
+    if "hot" in rating_lower:          return "badge-hot"
+    elif "good" in rating_lower:       return "badge-good"
+    elif "fair" in rating_lower:       return "badge-fair"
+    elif "risky" in rating_lower:      return "badge-risky"
     elif "suspicious" in rating_lower: return "badge-suspicious"
     return "badge-fair"
 
@@ -259,10 +278,6 @@ def shorten_url(url: str, max_path: int = 45) -> str:
 
 
 def render_deal_card(deal: dict, rank: int) -> None:
-    """
-    Render a deal card using st.components.v1.html so the HTML
-    is always rendered properly — never shown as raw text.
-    """
     name         = deal.get("product_name", "Unknown Product")
     product_url  = deal.get("product_url") or ""
     original     = deal.get("original_price", "N/A")
@@ -295,9 +310,6 @@ def render_deal_card(deal: dict, rank: int) -> None:
 
     rank_capped = min(rank, 5)
 
-    # ── Full self-contained HTML+CSS per card ──────────────────────────────
-    # Using components.v1.html so Streamlit NEVER treats this as plain text.
-    # Each card carries its own <style> block — no dependency on the parent page.
     card_html = f"""
     <!DOCTYPE html>
     <html>
@@ -308,76 +320,21 @@ def render_deal_card(deal: dict, rank: int) -> None:
     <style>
       * {{ box-sizing: border-box; margin: 0; padding: 0; }}
       body {{ background: transparent; font-family: 'Inter', sans-serif; padding: 4px 2px 8px 2px; }}
-
-      .deal-card {{
-        background: rgba(18, 18, 30, 0.95);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 16px;
-        padding: 1.5rem;
-        position: relative;
-        overflow: hidden;
-        transition: border-color 0.3s;
-      }}
-      .deal-card::before {{
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 2px;
-        background: linear-gradient(135deg, #7c5bf5, #5eead4);
-      }}
-
-      .deal-rank {{
-        position: absolute;
-        top: 1rem; right: 1rem;
-        width: 36px; height: 36px;
-        border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 800; font-size: 0.9rem; color: white;
-      }}
+      .deal-card {{ background: rgba(18, 18, 30, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.5rem; position: relative; overflow: hidden; }}
+      .deal-card::before {{ content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(135deg, #7c5bf5, #5eead4); }}
+      .deal-rank {{ position: absolute; top: 1rem; right: 1rem; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; color: white; }}
       .rank-1 {{ background: linear-gradient(135deg, #f59e0b, #f97316); }}
       .rank-2 {{ background: linear-gradient(135deg, #8b5cf6, #6366f1); }}
       .rank-3 {{ background: linear-gradient(135deg, #06b6d4, #0ea5e9); }}
       .rank-4, .rank-5 {{ background: linear-gradient(135deg, #64748b, #475569); }}
-
-      .product-name {{
-        font-size: 1.1rem; font-weight: 700;
-        color: #e8e8ed;
-        padding-right: 50px;
-        line-height: 1.4;
-        margin-bottom: 0.3rem;
-      }}
-
-      .product-link {{
-        display: inline-block;
-        font-size: 0.78rem;
-        color: #7c5bf5;
-        text-decoration: none;
-        margin-bottom: 0.8rem;
-        opacity: 0.85;
-        word-break: break-all;
-      }}
+      .product-name {{ font-size: 1.1rem; font-weight: 700; color: #e8e8ed; padding-right: 50px; line-height: 1.4; margin-bottom: 0.3rem; }}
+      .product-link {{ display: inline-block; font-size: 0.78rem; color: #7c5bf5; text-decoration: none; margin-bottom: 0.8rem; opacity: 0.85; word-break: break-all; }}
       .product-link:hover {{ opacity: 1; text-decoration: underline; }}
-
-      .deal-prices {{
-        display: flex; align-items: center;
-        gap: 12px; flex-wrap: wrap;
-        margin-bottom: 0.9rem;
-      }}
+      .deal-prices {{ display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 0.9rem; }}
       .price-discounted {{ font-size: 1.5rem; font-weight: 800; color: #5eead4; }}
       .price-original {{ font-size: 1rem; color: #5a5a6e; text-decoration: line-through; }}
-      .discount-badge {{
-        background: rgba(34,197,94,0.12); color: #22c55e;
-        padding: 4px 10px; border-radius: 6px;
-        font-size: 0.8rem; font-weight: 700;
-      }}
-
-      .badge {{
-        display: inline-block; padding: 5px 14px;
-        border-radius: 8px; font-size: 0.75rem;
-        font-weight: 700; letter-spacing: 0.8px;
-        text-transform: uppercase;
-        margin-right: 8px; margin-bottom: 6px;
-      }}
+      .discount-badge {{ background: rgba(34,197,94,0.12); color: #22c55e; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }}
+      .badge {{ display: inline-block; padding: 5px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-right: 8px; margin-bottom: 6px; }}
       .badge-hot {{ background: rgba(244,114,182,0.15); color: #f472b6; border: 1px solid rgba(244,114,182,0.3); }}
       .badge-good {{ background: rgba(94,234,212,0.1); color: #5eead4; border: 1px solid rgba(94,234,212,0.25); }}
       .badge-fair {{ background: rgba(251,146,60,0.1); color: #fb923c; border: 1px solid rgba(251,146,60,0.25); }}
@@ -385,56 +342,18 @@ def render_deal_card(deal: dict, rank: int) -> None:
       .badge-suspicious {{ background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }}
       .badge-safe {{ background: rgba(34,197,94,0.1); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }}
       .badge-warning {{ background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }}
-
-      .trust-row {{
-        display: flex; align-items: center;
-        gap: 10px; margin: 0.8rem 0;
-      }}
+      .trust-row {{ display: flex; align-items: center; gap: 10px; margin: 0.8rem 0; }}
       .trust-lbl {{ font-size: 0.72rem; color: #5a5a6e; font-weight: 600; letter-spacing: 1px; }}
-      .trust-track {{
-        flex: 1; height: 8px;
-        background: rgba(255,255,255,0.06);
-        border-radius: 10px; overflow: hidden;
-      }}
+      .trust-track {{ flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 10px; overflow: hidden; }}
       .trust-fill {{ height: 100%; border-radius: 10px; }}
       .trust-val {{ font-size: 0.85rem; font-weight: 600; min-width: 30px; text-align: right; }}
-
-      .insights {{
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 10px; margin-top: 1rem;
-      }}
-      .insight-box {{
-        background: rgba(255,255,255,0.02);
-        border: 1px solid rgba(255,255,255,0.04);
-        border-radius: 10px; padding: 0.8rem;
-      }}
-      .insight-lbl {{
-        font-size: 0.7rem; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 1px;
-        color: #5a5a6e; margin-bottom: 4px;
-      }}
+      .insights {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 1rem; }}
+      .insight-box {{ background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: 0.8rem; }}
+      .insight-lbl {{ font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #5a5a6e; margin-bottom: 4px; }}
       .insight-txt {{ font-size: 0.84rem; color: #8b8b9e; line-height: 1.5; }}
-
       .ai-box {{ margin-top: 0.8rem; }}
-
-      .verdict {{
-        font-size: 0.92rem; color: #5eead4; font-weight: 600;
-        margin-top: 0.8rem; padding: 0.6rem 0.8rem;
-        background: rgba(94,234,212,0.06);
-        border-left: 3px solid #5eead4;
-        border-radius: 0 8px 8px 0;
-      }}
-
-      .cta-btn {{
-        display: inline-block; margin-top: 1rem;
-        padding: 10px 22px;
-        background: linear-gradient(135deg, #7c5bf5, #5eead4);
-        color: white; border-radius: 10px;
-        font-size: 0.88rem; font-weight: 700;
-        text-decoration: none; letter-spacing: 0.3px;
-      }}
-      .cta-btn:hover {{ opacity: 0.88; }}
-
+      .verdict {{ font-size: 0.92rem; color: #5eead4; font-weight: 600; margin-top: 0.8rem; padding: 0.6rem 0.8rem; background: rgba(94,234,212,0.06); border-left: 3px solid #5eead4; border-radius: 0 8px 8px 0; }}
+      .cta-btn {{ display: inline-block; margin-top: 1rem; padding: 10px 22px; background: linear-gradient(135deg, #7c5bf5, #5eead4); color: white; border-radius: 10px; font-size: 0.88rem; font-weight: 700; text-decoration: none; letter-spacing: 0.3px; }}
       @media (max-width: 500px) {{ .insights {{ grid-template-columns: 1fr; }} }}
     </style>
     </head>
@@ -442,20 +361,16 @@ def render_deal_card(deal: dict, rank: int) -> None:
       <div class="deal-card">
         <div class="deal-rank rank-{rank_capped}">#{rank}</div>
         <div class="product-name">{name}</div>
-
         {link_html}
-
         <div class="deal-prices">
           <span class="price-discounted">{discounted}</span>
           <span class="price-original">{original}</span>
           <span class="discount-badge">↓ {discount_pct:.0f}% OFF</span>
         </div>
-
         <div>
           <span class="badge {badge_class}">{rating}</span>
           {suspicious_badge}
         </div>
-
         <div class="trust-row">
           <span class="trust-lbl">TRUST</span>
           <div class="trust-track">
@@ -463,7 +378,6 @@ def render_deal_card(deal: dict, rank: int) -> None:
           </div>
           <span class="trust-val" style="color:{trust_color};">{trust:.0f}</span>
         </div>
-
         <div class="insights">
           <div class="insight-box">
             <div class="insight-lbl">✅ Pros</div>
@@ -474,20 +388,16 @@ def render_deal_card(deal: dict, rank: int) -> None:
             <div class="insight-txt">{cons}</div>
           </div>
         </div>
-
         <div class="ai-box">
           <div class="insight-lbl" style="margin-bottom:4px;">🧠 AI Analysis</div>
           <div class="insight-txt">{reasons}</div>
         </div>
-
         <div class="verdict">🎯 {verdict}</div>
-
         {cta_html}
       </div>
     </body>
     </html>
     """
-    # height auto-sizes to card content; scrolling=False removes the iframe scrollbar
     components.html(card_html, height=520, scrolling=False)
 
 
@@ -690,6 +600,6 @@ st.markdown("""
 <div class="footer">
     <strong>Coofy AI</strong> — Ecommerce Deal Intelligence Platform<br>
     Built with FastAPI · Streamlit · Groq AI · Selenium<br>
-    <span style="color: #7c5bf5;">Made for interviews. Built like a startup.</span>
+    <span style="color: #7c5bf5;"> Built like a startup.</span>
 </div>
 """, unsafe_allow_html=True)
