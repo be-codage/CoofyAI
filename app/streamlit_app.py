@@ -29,7 +29,7 @@ st.set_page_config(
 # ---------------------------------------------------------------
 # Backend URL
 # ---------------------------------------------------------------
-BACKEND_URL = "https://coofyai.onrender.com"
+BACKEND_URL = "http://localhost:8000"
 
 # ---------------------------------------------------------------
 # Custom CSS — Futuristic Dark Theme
